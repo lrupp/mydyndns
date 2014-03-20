@@ -243,6 +243,10 @@ else {
 			PrintWeb($q,'nohost');
 			CleanupAndExit(1,$dbh);
 		}
+		if ("$remote_ip" eq ''){
+			DEBUG("No remote IP given and REMOTE_ADDR is also empty. Using localhost.");
+			$remote_ip=127.0.0.1;
+		}
 		DEBUG("Updating entry for host $remote_hostname now");
 		if (defined($ENV{'REMOTE_ADDR'}) && ("$remote_ip" ne "$ENV{'REMOTE_ADDR'}")){
 			DEBUG("Submitted remote IP $remote_ip does not match $ENV{'REMOTE_ADDR'} - will proceed nevertheless");

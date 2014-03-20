@@ -52,6 +52,16 @@ For MySQL there is a dump in the sql/ subdirectory. Please check and adapt to yo
 Examples
 --------
 
+The following options are mandatory:
+* username
+* password
+* hostname
+
+The following options are optional if you run in the webserver context:
+* myip
+
+If 'myip' is not given, the script relies on the 'REMOTE_ADDR' value provided by the webserver. If this one does also not exist, it will use 127.0.0.1.
+
 ###Using the commandline 
 
 Might be used for testing purposes on the server:

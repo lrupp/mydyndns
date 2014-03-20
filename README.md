@@ -14,13 +14,13 @@ Requirements
   with some small adaptions
 * mod_perl or similar enabled on your Webserver (Tested with mod_perl on Apache2)
 * The following Perl modules installed on the system:
-** Carp
-** CGI
-** Config::Simple
-** DBI
-** DNS::ZoneParse
-** Net::RNDC
-** POSIX
+ * Carp
+ * CGI
+ * Config::Simple
+ * DBI
+ * DNS::ZoneParse
+ * Net::RNDC
+ * POSIX
 
 Configuration
 -------------
@@ -36,11 +36,12 @@ As the script is executed with the rights of the webserver, I recommend to creat
 for your dyndns hosts. The script asumes that the files are named like the domain, so in the example 
 this means it expects a file named 'dyn.example.com' in '/var/lib/named/dyndns'. 
 
-This should be included in the named.conf like
- zone "dyn.example.com" {
+This should be included in the named.conf like:
+
+    zone "dyn.example.com" {
         type master;
         file "dyndns/dyn.example.com";
- };
+    };
 
 
 Database setup

@@ -48,3 +48,25 @@ Database setup
 --------------
 
 For MySQL there is a dump in the sql/ subdirectory. Please check and adapt to your configuration.
+
+Examples
+--------
+
+###Using the commandline 
+
+Might be used for testing purposes on the server:
+
+    ./dyndns.pl username=username password=password hostname=hostname  myip=127.0.0.1
+    
+Please note that the script has a "$debug" variable that can be set to '1' to get some output on STDERR. Please note that this debug output will end up in your apache logfiles if you do not turn it off again.
+
+####Using wget
+
+This might be the simplest way to get your DNS updated from the client:
+
+    wget https://<yourdomain>/cgi-bin/dyndns.pl?username=username&password=password&hostname=hostname&myip=127.0.0.1
+    
+Running this via a cron job should not not be that big problem. Please have a look into the client/ folder to get an idea for your own scripts.
+
+
+

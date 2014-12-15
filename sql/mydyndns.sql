@@ -104,10 +104,12 @@ INSERT INTO `hosts_to_users` (`id`, `host_id`, `user_id`) VALUES
 
 DROP TABLE IF EXISTS `logs`;
 CREATE TABLE IF NOT EXISTS `logs` (
+  `log_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `timestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `username` varchar(255) NOT NULL,
   `action` varchar(255) NOT NULL,
   `data` text NOT NULL,
+  PRIMARY KEY (`log_id`),
   KEY `timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Internal Log';
 

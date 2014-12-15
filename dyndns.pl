@@ -51,11 +51,13 @@ my $dbuser=$cfg->param('dbuser') || die "dbuser not specified in $conf\n";
 my $dbpass=$cfg->param('dbpass') || die "dbpass not specified in $conf\n";
 my $dbhost=$cfg->param('dbhost') || "localhost";
 
-sub LOG($$$$){
-	my ($username,$action,$data,$dbh)=@_;
-	my $now = strftime "%Y-%m-%d %H:%M:%S", localtime;
-	my $sth = $dbh->prepare(qq{ INSERT INTO logs SET timestamp=?, username=?, action=?, data=? }) or carp "Can't prepare statement: $DBI::errstr\n";
-	$sth->execute( $now, $username, $action, $data ) or carp "Can't execute statement: $DBI::errstr\n";
+sub LOG($$$$;$$){
+	my ($username,$action,$data,$dbh,$level,$loglevel)=@_;
+        if ($level < $loglevel){
+		my $now = strftime "%Y-%m-%d %H:%M:%S", localtime;
+		my $sth = $dbh->prepare(qq{ INSERT INTO logs SET timestamp=?, username=?, action=?, data=? }) or carp "Can't prepare statement: $DBI::errstr\n";
+		$sth->execute( $now, $username, $action, $data ) or carp "Can't execute statement: $DBI::errstr\n";
+	}
 	return;
 }
 
@@ -69,7 +71,9 @@ sub GetConfigValue($$){
 
 sub CleanupAndExit($$){
 	my ($exitcode,$dbh)=@_;
-	$dbh->disconnect();
+	if (defined($dbh)){
+		$dbh->disconnect();
+	}
 	exit $exitcode;
 }
 
@@ -131,14 +135,14 @@ sub UpdateZoneFile($$$$){
 	return("Successfully updated $zonefile_directory/$domain");
 }
 
-sub ReloadZoneFile($$){
-	my ($zonefile,$dbh) = @_;
+sub ReloadZoneFile($$$){
+	my ($zonefile,$dbh,$loglevel) = @_;
 	my $dns_host=GetConfigValue('dns_host',$dbh) || '127.0.0.1';
 	my $dns_port=GetConfigValue('dns_port',$dbh) || 953;
 	my $dns_key=GetConfigValue('dns_key',$dbh) || '';
 	if ( "$dns_key" eq ''){
 		DEBUG("Got no key for rndc calls - this might get wrong");
-		LOG('root','Security','Got no key for rndc calls - please check you database entry for a valid dns_key',$dbh);
+		LOG('root','Security','Got no key for rndc calls - please check you database entry for a valid dns_key',$dbh,1,$loglevel);
 	}
 	my $rndc = Net::RNDC->new(
 				    	host => $dns_host,
@@ -165,18 +169,24 @@ sub PrintWeb($$){
 # parse external params
 my $q = new CGI;
 my $remote_user=$q->param('username');
-$remote_user = '' unless $remote_user =~ /^[0-9A-Za-z_\.\+-]*$/;
+$remote_user = '' unless (defined($remote_user) && ($remote_user =~ /^[0-9A-Za-z_\.\+-]*$/));
 my $remote_pass=$q->param('password');
-$remote_pass='' unless $remote_pass =~ /^[0-9A-Za-z_\.\+-]*$/;
+$remote_pass='' unless (defined($remote_pass) && ($remote_pass =~ /^[0-9A-Za-z_\.\+-]*$/));
 my $remote_hostname=$q->param('hostname');
-$remote_hostname='' unless $remote_hostname =~ /^[0-9A-Za-z_\.\+-]*$/;
+$remote_hostname='' unless (defined($remote_hostname) && ($remote_hostname =~ /^[0-9A-Za-z_\.\+-]*$/));
 my $remote_ip=$q->param('myip');
-$remote_ip='' unless $remote_ip =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/;
+$remote_ip='' unless (defined($remote_ip) && ($remote_ip =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/));
 if ("$remote_ip" eq ''){
     $remote_ip=$ENV{'REMOTE_ADDR'};
 }
 
 DEBUG("Got: $remote_user; $remote_pass; $remote_hostname; $remote_ip;");
+
+# if we get no information at all, just print out the remote ip and exit
+if ("$remote_pass" eq ""){
+	PrintWeb($q,$remote_ip);
+	CleanupAndExit(1,undef);
+}
 
 # start DB connection
 my $dbh=DBI->connect(	"DBI:mysql:database=$dbname:host=$dbhost",
@@ -218,20 +228,20 @@ else {
 		@row = $dbh->selectrow_array($sql,undef,$remote_hostname);
 		unless (@row) {
  			DEBUG("host $remote_hostname not found in database");
-			LOG($user,'Security',"Host $remote_hostname not found in database",$dbh);
+			LOG($user,'Security',"Host $remote_hostname not found in database",$dbh,2,$loglevel);
 			PrintWeb($q,'nohost');
 			CleanupAndExit(1,$dbh);
 		}
 		my ($host_id,$host,$domain,$active,$stored_ip) = @row;
 		if (! $active){
 			DEBUG("Host $remote_hostname exists but is marked as inactive");
-			LOG($user,'Security',"Host $remote_hostname exists but is marked as inactive",$dbh);
+			LOG($user,'Security',"Host $remote_hostname exists but is marked as inactive",$dbh,2,$loglevel);
 			PrintWeb($q,'nohost');
 			CleanupAndExit(1,$dbh);
 		}
 		if ("$remote_ip" eq "$stored_ip"){
 			DEBUG("IP ($stored_ip) did not change for host $host - no need to do anything");
-			LOG($user,'Notice',"IP ($stored_ip) did not change for host $host",$dbh);
+			LOG($user,'Notice',"IP ($stored_ip) did not change for host $host",$dbh,5,$loglevel);
 			PrintWeb($q,'nochg');
 			CleanupAndExit(1,$dbh);
 		}
@@ -239,13 +249,9 @@ else {
 		@row = $dbh->selectrow_array($sql,undef,$host_id,$user_id);
 		unless (@row) {
 			DEBUG("User $user is not allowed to change $remote_hostname entry");
-			LOG($user,'Security',"Tried to change $remote_hostname entry",$dbh);
+			LOG($user,'Security',"Tried to change $remote_hostname entry",$dbh,1,$loglevel);
 			PrintWeb($q,'nohost');
 			CleanupAndExit(1,$dbh);
-		}
-		if ("$remote_ip" eq ''){
-			DEBUG("No remote IP given and REMOTE_ADDR is also empty. Using localhost.");
-			$remote_ip=127.0.0.1;
 		}
 		DEBUG("Updating entry for host $remote_hostname now");
 		if (defined($ENV{'REMOTE_ADDR'}) && ("$remote_ip" ne "$ENV{'REMOTE_ADDR'}")){
@@ -255,10 +261,10 @@ else {
 		my $sth = $dbh->prepare(qq{ UPDATE hosts SET ip=?, modified=? WHERE host_id=? }) or die "Can't prepare statement: $DBI::errstr\n";
 		$sth->execute( $remote_ip, $now, $host_id ) or die "Can't execute statement: $DBI::errstr\n";
 		my $res=UpdateZoneFile($zonefile_directory,$domain,$host,$remote_ip);
-		LOG($user,'UpdateZoneFile',$res,$dbh);
-		$res=ReloadZoneFile($domain,$dbh);
-		LOG($user,'ReloadZoneFile',$res,$dbh);
-		LOG($user,'NewIP',"Updated $remote_ip for $host ($domain)",$dbh);
+		LOG($user,'UpdateZoneFile',$res,$dbh,3,$loglevel);
+		$res=ReloadZoneFile($domain,$dbh,$loglevel);
+		LOG($user,'ReloadZoneFile',$res,$dbh,4,$loglevel);
+		LOG($user,'NewIP',"Updated $remote_ip for $host ($domain)",$dbh,1,$loglevel);
 		PrintWeb($q,'good');
 	}
 }

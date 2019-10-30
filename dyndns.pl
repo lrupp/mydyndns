@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #
-# Copyright (C) 2014 by Lars Vogdt <lars@linux-schulserver.de>
+# Copyright (C) by Lars Vogdt <lars@linux-schulserver.de>
 # Author: Lars Vogdt
 #
 # All rights reserved.

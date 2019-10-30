@@ -3,6 +3,13 @@ CONFIG='/etc/mydyndns.conf'
 OLDIPFILE=/root/myip
 TEMPFILE=$(mktemp "/tmp/myip.XXXXXX") || exit 1
 LOGFILE='/var/log/mydyndns.log'
+WHATSMYIPURL='http://www.example.com/cgi-bin/whatsmyip.cgi'
+DYNHOSTNAME='myhost.dyn.example.com'
+DNSSERVER='1.1.1.1'
+REMOTEURL='https://www.example.com/cgi-bin/dyndns.pl'
+REMOTEUSER='user'
+REMOTEPASS='pass'
+REMOTEHOST='myhost'
 trap "rm -f $TEMPFILE" EXIT
 
 function LOG(){

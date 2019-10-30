@@ -1,0 +1,8 @@
+[Unit]
+Description=DynDNS client script
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mydyndns.sh

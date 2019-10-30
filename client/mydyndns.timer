@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic DynDNS timer
+
+[Timer]
+Persistent=true
+OnActiveSec=0
+OnUnitInactiveSec=30min
+
+[Install]
+WantedBy=timers.target
+
